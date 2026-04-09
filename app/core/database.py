@@ -5,11 +5,24 @@ import logging
 DATABASE_URL = os.getenv("DATABASE_URL")
 DB_SCHEMA = os.getenv("DB_SCHEMA", "authenticator")
 
+pool: asyncpg.pool.Pool | None = None  # глобальная переменная для пула
+
+async def create_pool() -> asyncpg.pool.Pool:
+    global pool
+    if pool is None:
+        pool = await asyncpg.create_pool(DATABASE_URL)
+        logging.info("✅ Database pool created")
+    return pool
+
 async def init_db():
-    pool = await asyncpg.create_pool(DATABASE_URL)
+    global pool
+    if pool is None:
+        await create_pool()
+
     async with pool.acquire() as conn:
         # Указываем схему пользователя
-        await conn.execute(f"SET search_path TO {DB_SCHEMA};")
+        await conn.execute(f'SET search_path TO {DB_SCHEMA};')
+
         # Таблица заказов
         await conn.execute("""
         CREATE TABLE IF NOT EXISTS orders (
@@ -20,6 +33,7 @@ async def init_db():
             created_at TIMESTAMP DEFAULT NOW()
         );
         """)
+
         # Таблица водителей
         await conn.execute("""
         CREATE TABLE IF NOT EXISTS drivers (
@@ -30,6 +44,7 @@ async def init_db():
             created_at TIMESTAMP DEFAULT NOW()
         );
         """)
+
         # Таблица пассажиров
         await conn.execute("""
         CREATE TABLE IF NOT EXISTS passengers (
@@ -40,4 +55,3 @@ async def init_db():
         );
         """)
     logging.info("✅ Database initialized")
-    return pool

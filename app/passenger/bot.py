@@ -5,7 +5,7 @@ from app.passenger.handlers import start, order, cancel
 
 
 def create_passenger_bot():
-    bot = Bot(token=BOT_TOKEN_PASSENGER)
+    bot = Bot(token=BOT_TOKEN_PASSENGER, parse_mode="HTML")
     dp = Dispatcher(storage=MemoryStorage())
 
     dp.include_router(start.router)

@@ -3,9 +3,10 @@ import os
 import logging
 
 DATABASE_URL = os.getenv("DATABASE_URL")
-DB_SCHEMA = os.getenv("DB_SCHEMA", "authenticator")
+# Neon обычно создаёт схему с именем пользователя (не public)
+DB_SCHEMA = os.getenv("DB_SCHEMA", "authenticator")  # <- поставь свой Neon username
 
-pool: asyncpg.pool.Pool | None = None  # глобальная переменная для пула
+pool: asyncpg.pool.Pool | None = None
 
 async def create_pool() -> asyncpg.pool.Pool:
     global pool
@@ -20,12 +21,12 @@ async def init_db():
         await create_pool()
 
     async with pool.acquire() as conn:
-        # Указываем схему пользователя
+        # Устанавливаем схему по умолчанию
         await conn.execute(f'SET search_path TO {DB_SCHEMA};')
 
         # Таблица заказов
-        await conn.execute("""
-        CREATE TABLE IF NOT EXISTS orders (
+        await conn.execute(f"""
+        CREATE TABLE IF NOT EXISTS {DB_SCHEMA}.orders (
             id SERIAL PRIMARY KEY,
             passenger_id BIGINT NOT NULL,
             driver_id BIGINT,
@@ -35,8 +36,8 @@ async def init_db():
         """)
 
         # Таблица водителей
-        await conn.execute("""
-        CREATE TABLE IF NOT EXISTS drivers (
+        await conn.execute(f"""
+        CREATE TABLE IF NOT EXISTS {DB_SCHEMA}.drivers (
             id SERIAL PRIMARY KEY,
             user_id BIGINT NOT NULL,
             name TEXT,
@@ -46,8 +47,8 @@ async def init_db():
         """)
 
         # Таблица пассажиров
-        await conn.execute("""
-        CREATE TABLE IF NOT EXISTS passengers (
+        await conn.execute(f"""
+        CREATE TABLE IF NOT EXISTS {DB_SCHEMA}.passengers (
             id SERIAL PRIMARY KEY,
             user_id BIGINT NOT NULL,
             name TEXT,

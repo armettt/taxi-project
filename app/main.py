@@ -1,12 +1,15 @@
 import asyncio
-import logging
-from app.core.database import create_pool, init_db
-
-logging.basicConfig(level=logging.INFO)
+from app.core.database import init_db
+from app.bots.driver_bot import start_driver_bot
+from app.bots.passenger_bot import start_passenger_bot
 
 async def main():
     await init_db()
-    logging.info("Боты запущены")
+    # Запуск ботов параллельно
+    await asyncio.gather(
+        start_driver_bot(),
+        start_passenger_bot()
+    )
 
 if __name__ == "__main__":
     asyncio.run(main())

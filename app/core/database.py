@@ -1,50 +1,43 @@
 import asyncpg
-from app.core.config import DATABASE_URL
+import os
+import logging
 
-pool = None
-
-
-async def create_pool():
-    global pool
-    pool = await asyncpg.create_pool(DATABASE_URL)
-
-
-async def get_pool():
-    return pool
-
+DATABASE_URL = os.getenv("DATABASE_URL")
+DB_SCHEMA = os.getenv("DB_SCHEMA", "authenticator")
 
 async def init_db():
+    pool = await asyncpg.create_pool(DATABASE_URL)
     async with pool.acquire() as conn:
-        await conn.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            user_id BIGINT PRIMARY KEY,
-            phone TEXT
-        );
-        """)
-
-        await conn.execute("""
-        CREATE TABLE IF NOT EXISTS drivers (
-            user_id BIGINT PRIMARY KEY,
-            username TEXT,
-            phone TEXT,
-            brand TEXT,
-            model TEXT,
-            color TEXT,
-            plate TEXT
-        );
-        """)
-
+        # Указываем схему пользователя
+        await conn.execute(f"SET search_path TO {DB_SCHEMA};")
+        # Таблица заказов
         await conn.execute("""
         CREATE TABLE IF NOT EXISTS orders (
             id SERIAL PRIMARY KEY,
-            client_id BIGINT,
-            phone TEXT,
-            username TEXT,
-            from_loc TEXT,
-            to_loc TEXT,
-            comment TEXT,
-            status TEXT DEFAULT 'waiting',
+            passenger_id BIGINT NOT NULL,
             driver_id BIGINT,
-            message_id BIGINT
+            status TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT NOW()
         );
         """)
+        # Таблица водителей
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS drivers (
+            id SERIAL PRIMARY KEY,
+            user_id BIGINT NOT NULL,
+            name TEXT,
+            car TEXT,
+            created_at TIMESTAMP DEFAULT NOW()
+        );
+        """)
+        # Таблица пассажиров
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS passengers (
+            id SERIAL PRIMARY KEY,
+            user_id BIGINT NOT NULL,
+            name TEXT,
+            created_at TIMESTAMP DEFAULT NOW()
+        );
+        """)
+    logging.info("✅ Database initialized")
+    return pool
